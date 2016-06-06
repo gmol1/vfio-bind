@@ -41,9 +41,9 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 		if [[ ! -d "/sys/bus/pci/devices/$(echo $opt | awk '{print $1}')/iommu/" ]]; then
 			if [[ $(lscpu | grep "Vendor ID:" | awk '{print $3}') == "AuthenticAMD" ]]; then 
 				if [[ $(dmesg| grep -o 'AMD-Vi: Found IOMMU') ]]; then
-					echo -e "\e[31mIOMMU is enabled but it isn't working correctly, check your hardware"
+					echo -e "\e[31mIOMMU is enabled but isn't working correctly, check your hardware"
 					exit 1
-				fi			
+				fi
 			elif [[ $(lscpu | grep "Vendor ID:" | awk '{print $3}') == "GenuineIntel" ]]; then
 				if [[ ! $(cat /etc/default/grub | sed -n -e 's/GRUB_CMDLINE_LINUX_DEFAULT//p' | sed -e 's/=//;s/"//g' | grep -o 'intel_iommu=on') ]]; then
 					echo "IOMMU isn't enabled in the Kernel, would you like to enable it?"
@@ -51,29 +51,29 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 					options=("Yes" "No")
 					select opt in "${options[@]}"
 					do
-					    case $opt in
-					    	"Yes")
+						case $opt in
+							"Yes")
 								grub="/etc/default/grub"
 								if [[ ! -a $grub ]]; then
 									echo -e "\e[31mUnable to open $grub, exiting now"
 									exit 1
 								fi
 								echo "Updating GRUB..."
-					    		cp $grub $grub.bk
-					    		a=$(sed -n '/GRUB_CMDLINE_LINUX_DEFAULT/=' $grub)
+								cp $grub $grub.bk
+								a=$(sed -n '/GRUB_CMDLINE_LINUX_DEFAULT/=' $grub)
 								b=$(sed -n "$a p" $grub | sed 's/"$/ intel_iommu=on\"/')
 								c=$(sed -i "$a s/.*/$b/" $grub)
 								update-grub &>/dev/null
 								echo "Done"
 								echo "You must reboot to apply the changes"
 								exit
-					            ;;
-					        "No")
-					            echo -e "\e[31mIOMMU must be enabled in the kernel before continuing, exiting now"
-					            exit
-					            ;;
-					        *) echo Invalid option;;
-					    esac
+								;;
+							"No")
+								echo -e "\e[31mIOMMU must be enabled in the kernel before continuing, exiting now"
+								exit
+								;;
+							*) echo Invalid option;;
+						esac
 					done
 				elif [[ $(dmesg | grep -o 'Intel-IOMMU: enabled') || $(dmesg | grep -o 'DMAR: IOMMU enabled') ]]; then
 					echo -e "\e[31mIOMMU is enabled but isn't working correctly, check your hardware"
@@ -82,6 +82,36 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 			else
 				echo -e "\e[31mCheck your hardware"
 				exit 1
+			fi
+		elif [[ $(lscpu | grep "Vendor ID:" | awk '{print $3}') == "AuthenticAMD" ]]; then
+			if [[ ! $(cat /etc/default/grub | sed -n -e 's/GRUB_CMDLINE_LINUX_DEFAULT//p' | sed -e 's/=//;s/"//g' | grep -o 'iommu=pt') ]]; then
+				echo "Is recommended to add the \"iommu=pt\" as a kernel parameter, would you like to add it now?"
+				PS3="Option: "
+				options=("Yes" "No")
+				select opt2 in "${options[@]}"
+				do
+					case $opt2 in
+						"Yes")
+							grub="/etc/default/grub"
+							if [[ ! -a $grub ]]; then
+								echo -e "\e[31mUnable to open $grub, exiting now"
+								exit 1
+							fi
+							echo "Updating GRUB..."
+							cp $grub $grub.bk
+							a=$(sed -n '/GRUB_CMDLINE_LINUX_DEFAULT/=' $grub)
+							b=$(sed -n "$a p" $grub | sed 's/"$/ iommu=pt\"/')
+							c=$(sed -i "$a s/.*/$b/" $grub)
+							update-grub &>/dev/null
+							echo "Done"
+							break
+							;;
+						"No")
+							break
+							;;
+						*) echo Invalid option;;
+					esac
+				done
 			fi
 		fi
 	
@@ -104,15 +134,15 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 				options=("Yes" "No")
 				select opt in "${options[@]}"
 				do
-				    case $opt in
-				    	"Yes")
-				    	break
-				            ;;
-				        "No")
-				            exit
-				            ;;
-				        *) echo Invalid option;;
-				    esac
+					case $opt in
+						"Yes")
+							break
+							;;
+						"No")
+							exit
+							;;
+						*) echo Invalid option;;
+					esac
 				done
 		fi
 
