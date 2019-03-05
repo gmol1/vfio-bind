@@ -6,6 +6,7 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2016 Guillermo Molina
+# Copyright (c) 2018 Kim Forsman
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -39,13 +40,13 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 	PS3="Device: "
 	select opt in "${d_id[@]}"; do
 		if [[ ! -d "/sys/bus/pci/devices/$(echo $opt | awk '{print $1}')/iommu/" ]]; then
-			if [[ $(lscpu | grep "Vendor ID:" | awk '{print $3}') == "AuthenticAMD" ]]; then 
+			if [[ $(lscpu | grep "Vendor ID:" | awk '{print $3}') == "AuthenticAMD" ]]; then
 				if [[ $(dmesg| grep -o 'AMD-Vi: Found IOMMU') ]]; then
 					echo -e "\e[31mIOMMU is enabled but isn't working correctly, check your hardware"
 					exit 1
 				fi
 			elif [[ $(lscpu | grep "Vendor ID:" | awk '{print $3}') == "GenuineIntel" ]]; then
-				if [[ ! $(cat /etc/default/grub | sed -n -e 's/GRUB_CMDLINE_LINUX_DEFAULT//p' | sed -e 's/=//;s/"//g' | grep -o 'intel_iommu=on') ]]; then
+				if [[ ! -e '/etc/kernel/cmdline.d/20_vfio.conf' || ! $(cat /etc/kernel/cmdline.d/20_vfio.conf | grep -o 'intel_iommu=on' &>/dev/null) ]]; then
 					echo "IOMMU isn't enabled in the Kernel, would you like to enable it?"
 					PS3="Option: "
 					options=("Yes" "No")
@@ -53,17 +54,8 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 					do
 						case $opt in
 							"Yes")
-								grub="/etc/default/grub"
-								if [[ ! -a $grub ]]; then
-									echo -e "\e[31mUnable to open $grub, exiting now"
-									exit 1
-								fi
-								echo "Updating GRUB..."
-								cp $grub $grub.bk
-								a=$(sed -n '/GRUB_CMDLINE_LINUX_DEFAULT/=' $grub)
-								b=$(sed -n "$a p" $grub | sed 's/"$/ intel_iommu=on\"/')
-								c=$(sed -i "$a s/.*/$b/" $grub)
-								update-grub &>/dev/null
+								echo "intel_iommu=on" >> /etc/kernel/cmdline.d/20_vfio.conf
+								clr-boot-manager update
 								echo "Done"
 								echo "You must reboot to apply the changes"
 								exit
@@ -84,7 +76,7 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 				exit 1
 			fi
 		elif [[ $(lscpu | grep "Vendor ID:" | awk '{print $3}') == "AuthenticAMD" ]]; then
-			if [[ ! $(cat /etc/default/grub | sed -n -e 's/GRUB_CMDLINE_LINUX_DEFAULT//p' | sed -e 's/=//;s/"//g' | grep -o 'iommu=pt') ]]; then
+			if [[ ! -e '/etc/kernel/cmdline.d/20_vfio.conf' || ! $(cat /etc/kernel/cmdline.d/20_vfio.conf | grep -o 'iommu=pt') ]]; then
 				echo "Is recommended to add the \"iommu=pt\" as a kernel parameter, would you like to add it now?"
 				PS3="Option: "
 				options=("Yes" "No")
@@ -92,17 +84,8 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 				do
 					case $opt2 in
 						"Yes")
-							grub="/etc/default/grub"
-							if [[ ! -a $grub ]]; then
-								echo -e "\e[31mUnable to open $grub, exiting now"
-								exit 1
-							fi
-							echo "Updating GRUB..."
-							cp $grub $grub.bk
-							a=$(sed -n '/GRUB_CMDLINE_LINUX_DEFAULT/=' $grub)
-							b=$(sed -n "$a p" $grub | sed 's/"$/ iommu=pt\"/')
-							c=$(sed -i "$a s/.*/$b/" $grub)
-							update-grub &>/dev/null
+							echo "iommu=pt" >> /etc/kernel/cmdline.d/20_vfio.conf
+							#clr-boot-manager update
 							echo "Done"
 							break
 							;;
@@ -114,7 +97,7 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 				done
 			fi
 		fi
-	
+
 		for i in $(ls /sys/bus/pci/devices/$(echo $opt | awk '{print $1}')/iommu_group/devices/); do
 			if [[ "$i" == "$(echo $opt | awk '{print $1}')" || "$i" == "$(echo $opt | awk '{print $1}' | sed 's/0$/1/')" ]]; then
 				device+=( "$i" )
@@ -167,9 +150,25 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 			echo "echo \"vfio-pci\" > $(ls /sys/bus/pci/devices/$i/driver_override)" >> $dir/vfio-bind.sh
 		done
 		echo "modprobe -i vfio-pci" >> $dir/vfio-bind.sh
+		# Added by Endumiuz -- start
+		device_id_0=`lspci -Dn | grep "$(echo $opt | awk '{print $1}' | sed 's/.$//')0" | awk {'print $3'}`
+		device_id_1=`lspci -Dn | grep "$(echo $opt | awk '{print $1}' | sed 's/.$//')1" | awk {'print $3'}`
+		echo $(sed '/vfio-pci.ids=/d' /etc/kernel/cmdline.d/20_vfio.conf) > /etc/kernel/cmdline.d/20_vfio.conf
+		echo "vfio-pci.ids=$device_id_0,$device_id_1" >> /etc/kernel/cmdline.d/20_vfio.conf
+		if [[ ! -d /etc/modprobe.d ]]; then
+			mkdir /etc/modprobe.d
+		fi
+		echo "options vfio-pci ids=$device_id_0,$device_id_1" > /etc/modprobe.d/vfio.conf
+		if [[ ! $(cat /etc/dracut.conf | grep -o 'vfio-bind') ]]; then
+			echo "add_dracutmodules+=\"vfio-bind\"" >> /etc/dracut.conf
+		fi
+		echo "force_drivers+=\" vfio vfio_iommu_type1 vfio-pci vfio_virqfd \"" > /etc/dracut.conf.d/vfio.conf
+		# Added by Endumiuz -- end
 		trap "" INT
 		echo "Regenerating initramfs..."
-		dracut -f --kver `uname -r` &>/dev/null
+		#dracut -f --kver `uname -r` $(ls -1t /boot/initrd-com.solus-project.current.* | tail -1) $(uname -r) #&>/dev/null
+		dracut -f --kver `uname -r` $(ls -1t /usr/lib/kernel/initrd-com.solus-project.current.* | tail -1) $(uname -r) #&>/dev/null
+		clr-boot-manager update
 		echo "Done"
 		echo "You must reboot to apply the changes"
 		echo -e "After reboot you can check if the device is binded to vfio-pci by running \e[1m\"lspci -ks $device\""
