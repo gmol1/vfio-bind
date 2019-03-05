@@ -87,7 +87,6 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 						"Yes")
 							touch /etc/kernel/cmdline.d/20_vfio.conf
 							echo "iommu=pt" >> /etc/kernel/cmdline.d/20_vfio.conf
-							#clr-boot-manager update
 							echo "Done"
 							break
 							;;
@@ -183,8 +182,7 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 		echo "force_drivers+=\" vfio vfio_iommu_type1 vfio-pci vfio_virqfd \"" > /etc/dracut.conf.d/vfio.conf
 		trap "" INT
 		echo "Regenerating initramfs..."
-		#dracut -f --kver `uname -r` $(ls -1t /boot/initrd-com.solus-project.current.* | tail -1) $(uname -r) #&>/dev/null
-		dracut -f --kver `uname -r` $(ls -1t /usr/lib/kernel/initrd-com.solus-project.current.* | tail -1) $(uname -r) #&>/dev/null
+		dracut -f --kver `uname -r` $(ls -1t /usr/lib/kernel/initrd-com.solus-project.current.* | tail -1) $(uname -r) &>/dev/null
 		clr-boot-manager update
 		echo "Done"
 		echo "You must reboot to apply the changes"
