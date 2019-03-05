@@ -156,7 +156,9 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 			echo $(sed '/vfio-pci.ids=/d' /etc/kernel/cmdline.d/20_vfio.conf) > /etc/kernel/cmdline.d/20_vfio.conf
 		fi
 
+		touch /etc/kernel/cmdline.d/20_vfio.conf
 		echo "vfio-pci.ids=" >> /etc/kernel/cmdline.d/20_vfio.conf
+		
 		echo "options vfio-pci ids=" > /etc/modprobe.d/vfio.conf
 
 		for i in "${w_device[@]}"; do
