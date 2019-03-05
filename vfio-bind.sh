@@ -151,17 +151,33 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 		done
 		echo > $dir/vfio-bind.sh
 		echo "#!/bin/bash" >> $dir/vfio-bind.sh
+
 		for i in "${w_device[@]}"; do
+			echo "Debug 154: $i"
 			echo "echo \"vfio-pci\" > $(ls /sys/bus/pci/devices/$i/driver_override)" >> $dir/vfio-bind.sh
 		done
 		echo "modprobe -i vfio-pci" >> $dir/vfio-bind.sh
-		# Added by Endumiuz -- start
-		echo "Debug 158: $device"
-		device_id_0=`lspci -Dn | grep "$(echo $device | awk '{print $1}' | sed 's/.$//')0" | awk {'print $3'}`
-		device_id_1=`lspci -Dn | grep "$(echo $device | awk '{print $1}' | sed 's/.$//')1" | awk {'print $3'}`
-		echo "Debug 161: $device_id_0, $device_id_1"
+		echo "Debug 158: $device, $w_device"
+		#device_id_0=`lspci -Dn | grep "$(echo $device | awk '{print $1}' | sed 's/.$//')0" | awk {'print $3'}`
+		#device_id_1=`lspci -Dn | grep "$(echo $device | awk '{print $1}' | sed 's/.$//')1" | awk {'print $3'}`
+		#echo "Debug 161: $device_id_0, $device_id_1"
+
 		echo $(sed '/vfio-pci.ids=/d' /etc/kernel/cmdline.d/20_vfio.conf) > /etc/kernel/cmdline.d/20_vfio.conf
-		echo "vfio-pci.ids=$device_id_0,$device_id_1" >> /etc/kernel/cmdline.d/20_vfio.conf
+		echo "vfio-pci.ids=" >> /etc/kernel/cmdline.d/20_vfio.conf
+
+		for i in "${w_device[@]}"; do
+			echo "Debug 154c: $i"
+			echo $(sed "s_\bvfio-pci.*\b_&,$(lspci -Dn | grep "$i" | awk {'print $3'}) _" /etc/kernel/cmdline.d/20_vfio.conf) > /etc/kernel/cmdline.d/20_vfio.conf
+		done
+
+		# for i in `lspci -Dn | grep "$(echo $device | awk '{print $1}' | sed 's/.$//')0" | awk {'print $3'}`; do
+		# 	#echo $(sed '/s/vfio-pci.ids=/') > /etc/kernel/cmdline.d/20_vfio.conf
+		# 	echo "Debug 168: $i"
+			
+		# 	#echo "vfio-pci.ids=$i," >> /etc/kernel/cmdline.d/20_vfio.conf
+		# done
+
+		#echo "vfio-pci.ids=$device_id_0,$device_id_1" >> /etc/kernel/cmdline.d/20_vfio.conf
 		if [[ ! -d /etc/modprobe.d ]]; then
 			mkdir /etc/modprobe.d
 		fi
@@ -170,11 +186,10 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 			echo "add_dracutmodules+=\"vfio-bind\"" >> /etc/dracut.conf
 		fi
 		echo "force_drivers+=\" vfio vfio_iommu_type1 vfio-pci vfio_virqfd \"" > /etc/dracut.conf.d/vfio.conf
-		# Added by Endumiuz -- end
 		trap "" INT
 		echo "Regenerating initramfs..."
-		#dracut -f --kver `uname -r` $(ls -1t /boot/initrd-com.solus-project.current.* | tail -1) $(uname -r) #&>/dev/null
-		dracut -f --kver `uname -r` $(ls -1t /usr/lib/kernel/initrd-com.solus-project.current.* | tail -1) $(uname -r) #&>/dev/null
+		##dracut -f --kver `uname -r` $(ls -1t /boot/initrd-com.solus-project.current.* | tail -1) $(uname -r) #&>/dev/null
+		#dracut -f --kver `uname -r` $(ls -1t /usr/lib/kernel/initrd-com.solus-project.current.* | tail -1) $(uname -r) #&>/dev/null
 		clr-boot-manager update
 		echo "Done"
 		echo "You must reboot to apply the changes"
