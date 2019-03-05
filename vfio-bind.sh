@@ -33,12 +33,12 @@ fi
 
 if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 	for i in $(lspci -D | grep VGA | awk '{print $1}') ; do
-		d_id+=( "$(lspci -D | grep $i)" )
+		device_id+=( "$(lspci -D | grep $i)" )
 	done
 
 	echo "Select the target device:"
 	PS3="Device: "
-	select opt in "${d_id[@]}"; do
+	select opt in "${device_id[@]}"; do
 		if [[ ! -d "/sys/bus/pci/devices/$(echo $opt | awk '{print $1}')/iommu/" ]]; then
 			if [[ $(lscpu | grep "Vendor ID:" | awk '{print $3}') == "AuthenticAMD" ]]; then
 				if [[ $(dmesg| grep -o 'AMD-Vi: Found IOMMU') ]]; then
