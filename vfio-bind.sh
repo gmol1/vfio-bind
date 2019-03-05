@@ -39,7 +39,6 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 	echo "Select the target device:"
 	PS3="Device: "
 	select device in "${device_id[@]}"; do
-		echo "Debug 41: $device"
 		if [[ ! -d "/sys/bus/pci/devices/$(echo $device | awk '{print $1}')/iommu/" ]]; then
 			if [[ $(lscpu | grep "Vendor ID:" | awk '{print $3}') == "AuthenticAMD" ]]; then
 				if [[ $(dmesg| grep -o 'AMD-Vi: Found IOMMU') ]]; then
@@ -53,7 +52,6 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 					options=("Yes" "No")
 					select opt in "${options[@]}"
 					do
-						echo "Debug 54: $opt"
 						case $opt in
 							"Yes")
 								echo "intel_iommu=on" >> /etc/kernel/cmdline.d/20_vfio.conf
@@ -84,7 +82,6 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 				options=("Yes" "No")
 				select opt in "${options[@]}"
 				do
-					echo "Debug 86: $opt"
 					case $opt in
 						"Yes")
 							echo "iommu=pt" >> /etc/kernel/cmdline.d/20_vfio.conf
@@ -102,7 +99,6 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 		fi
 
 		for i in $(ls /sys/bus/pci/devices/$(echo $device | awk '{print $1}')/iommu_group/devices/); do
-			echo "Debug 104: $device"
 			if [[ "$i" == "$(echo $device | awk '{print $1}')" || "$i" == "$(echo $device | awk '{print $1}' | sed 's/0$/1/')" ]]; then
 				w_device+=( "$i" )
 			else
@@ -121,7 +117,6 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 				options=("Yes" "No")
 				select opt in "${options[@]}"
 				do
-					echo "Debug 123: $opt"
 					case $opt in
 						"Yes")
 							break
@@ -153,14 +148,9 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 		echo "#!/bin/bash" >> $dir/vfio-bind.sh
 
 		for i in "${w_device[@]}"; do
-			echo "Debug 154: $i"
 			echo "echo \"vfio-pci\" > $(ls /sys/bus/pci/devices/$i/driver_override)" >> $dir/vfio-bind.sh
 		done
 		echo "modprobe -i vfio-pci" >> $dir/vfio-bind.sh
-		echo "Debug 158: $device, $w_device"
-		#device_id_0=`lspci -Dn | grep "$(echo $device | awk '{print $1}' | sed 's/.$//')0" | awk {'print $3'}`
-		#device_id_1=`lspci -Dn | grep "$(echo $device | awk '{print $1}' | sed 's/.$//')1" | awk {'print $3'}`
-		#echo "Debug 161: $device_id_0, $device_id_1"
 
 		if [[ -e '/etc/kernel/cmdline.d/20_vfio.conf' ]]; then
 			echo $(sed '/vfio-pci.ids=/d' /etc/kernel/cmdline.d/20_vfio.conf) > /etc/kernel/cmdline.d/20_vfio.conf
@@ -172,17 +162,8 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 		done
 
 		# Remove trailing punctation (,)
-		#echo $(sed 's/,$//' /etc/kernel/cmdline.d/20_vfio.conf) > /etc/kernel/cmdline.d/20_vfio.conf
 		echo $(sed '/^vfio-pci.ids=.*/ s/,$//' /etc/kernel/cmdline.d/20_vfio.conf) > /etc/kernel/cmdline.d/20_vfio.conf
 
-		# for i in `lspci -Dn | grep "$(echo $device | awk '{print $1}' | sed 's/.$//')0" | awk {'print $3'}`; do
-		# 	#echo $(sed '/s/vfio-pci.ids=/') > /etc/kernel/cmdline.d/20_vfio.conf
-		# 	echo "Debug 168: $i"
-			
-		# 	#echo "vfio-pci.ids=$i," >> /etc/kernel/cmdline.d/20_vfio.conf
-		# done
-
-		#echo "vfio-pci.ids=$device_id_0,$device_id_1" >> /etc/kernel/cmdline.d/20_vfio.conf
 		if [[ ! -d /etc/modprobe.d ]]; then
 			mkdir /etc/modprobe.d
 		fi
@@ -193,8 +174,8 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 		echo "force_drivers+=\" vfio vfio_iommu_type1 vfio-pci vfio_virqfd \"" > /etc/dracut.conf.d/vfio.conf
 		trap "" INT
 		echo "Regenerating initramfs..."
-		##dracut -f --kver `uname -r` $(ls -1t /boot/initrd-com.solus-project.current.* | tail -1) $(uname -r) #&>/dev/null
-		#dracut -f --kver `uname -r` $(ls -1t /usr/lib/kernel/initrd-com.solus-project.current.* | tail -1) $(uname -r) #&>/dev/null
+		#dracut -f --kver `uname -r` $(ls -1t /boot/initrd-com.solus-project.current.* | tail -1) $(uname -r) #&>/dev/null
+		dracut -f --kver `uname -r` $(ls -1t /usr/lib/kernel/initrd-com.solus-project.current.* | tail -1) $(uname -r) #&>/dev/null
 		clr-boot-manager update
 		echo "Done"
 		echo "You must reboot to apply the changes"
