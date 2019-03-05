@@ -144,7 +144,7 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 		for i in "${module_setup[@]}"; do
 			echo $i >> $dir/module-setup.sh
 		done
-		echo > $dir/vfio-bind.sh
+		touch $dir/vfio-bind.sh
 		echo "#!/bin/bash" >> $dir/vfio-bind.sh
 
 		for i in "${w_device[@]}"; do
@@ -155,19 +155,23 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 		if [[ -e '/etc/kernel/cmdline.d/20_vfio.conf' ]]; then
 			echo $(sed '/vfio-pci.ids=/d' /etc/kernel/cmdline.d/20_vfio.conf) > /etc/kernel/cmdline.d/20_vfio.conf
 		fi
+
 		echo "vfio-pci.ids=" >> /etc/kernel/cmdline.d/20_vfio.conf
+		echo "options vfio-pci ids=" > /etc/modprobe.d/vfio.conf
 
 		for i in "${w_device[@]}"; do
 			echo $(sed "s_^vfio-pci.ids=.*_&$(lspci -Dn | grep "$i" | awk {'print $3'}), _" /etc/kernel/cmdline.d/20_vfio.conf) > /etc/kernel/cmdline.d/20_vfio.conf
+			echo $(sed "s/^options vfio-pci ids=.*/&$(lspci -Dn | grep "$i" | awk {'print $3'}), /" /etc/modprobe.d/vfio.conf) > /etc/modprobe.d/vfio.conf
 		done
 
 		# Remove trailing punctation (,)
 		echo $(sed '/^vfio-pci.ids=.*/ s/,$//' /etc/kernel/cmdline.d/20_vfio.conf) > /etc/kernel/cmdline.d/20_vfio.conf
+		echo $(sed '/^options vfio-pci ids=.*/ s/,$//' /etc/modprobe.d/vfio.conf) > /etc/modprobe.d/vfio.conf
 
 		if [[ ! -d /etc/modprobe.d ]]; then
 			mkdir /etc/modprobe.d
 		fi
-		echo "options vfio-pci ids=$device_id_0,$device_id_1" > /etc/modprobe.d/vfio.conf
+
 		if [[ ! $(cat /etc/dracut.conf | grep -o 'vfio-bind') ]]; then
 			echo "add_dracutmodules+=\"vfio-bind\"" >> /etc/dracut.conf
 		fi
@@ -179,7 +183,7 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 		clr-boot-manager update
 		echo "Done"
 		echo "You must reboot to apply the changes"
-		echo -e "After reboot you can check if the device is binded to vfio-pci by running \e[1m\"lspci -ks $device\""
+		echo -e "After reboot you can check if the device is binded to vfio-pci by running \e[1m\"lspci -ks $w_device\""
 		exit
 done
 else
