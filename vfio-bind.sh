@@ -164,7 +164,7 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 			echo $(sed "s/^options vfio-pci ids=.*/&$(lspci -Dn | grep "$i" | awk {'print $3'}), /" /etc/modprobe.d/vfio.conf) > /etc/modprobe.d/vfio.conf
 		done
 
-		# Remove trailing punctation (,)
+		# Remove trailing punctuation (,)
 		echo $(sed '/^vfio-pci.ids=.*/ s/,$//' /etc/kernel/cmdline.d/20_vfio.conf) > /etc/kernel/cmdline.d/20_vfio.conf
 		echo $(sed '/^options vfio-pci ids=.*/ s/,$//' /etc/modprobe.d/vfio.conf) > /etc/modprobe.d/vfio.conf
 
