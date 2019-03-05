@@ -31,11 +31,21 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 echo "Uninstalling vfio-bind..."
-rm /etc/kernel/cmdline.d/20_vfio.conf
-rm /etc/modprobe.d/vfio.conf
+if [[ -e '/etc/kernel/cmdline.d/20_vfio.conf' ]]; then
+	rm /etc/kernel/cmdline.d/20_vfio.conf
+fi
+
+if [[ -e '/etc/modprobe.d/vfio.conf' ]]; then
+	rm /etc/modprobe.d/vfio.conf
+fi
+
 rm -rf /usr/lib/dracut/modules.d/40vfio-bind
 echo $(sed '/vfio-bind/d' /etc/dracut.conf) > /etc/dracut.conf
-rm /etc/dracut.conf.d/vfio.conf
+
+if [[ -e '/etc/dracut.conf.d/vfio.conf' ]]; then
+	rm /etc/dracut.conf.d/vfio.conf
+fi
+
 echo "Regenerating initramfs..."
 dracut -f --kver `uname -r` $(ls -1t /usr/lib/kernel/initrd-com.solus-project.current.* | tail -1) $(uname -r) #&>/dev/null
 clr-boot-manager update
