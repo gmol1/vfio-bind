@@ -162,13 +162,18 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 		#device_id_1=`lspci -Dn | grep "$(echo $device | awk '{print $1}' | sed 's/.$//')1" | awk {'print $3'}`
 		#echo "Debug 161: $device_id_0, $device_id_1"
 
-		echo $(sed '/vfio-pci.ids=/d' /etc/kernel/cmdline.d/20_vfio.conf) > /etc/kernel/cmdline.d/20_vfio.conf
+		if [[ -e '/etc/kernel/cmdline.d/20_vfio.conf' ]]; then
+			echo $(sed '/vfio-pci.ids=/d' /etc/kernel/cmdline.d/20_vfio.conf) > /etc/kernel/cmdline.d/20_vfio.conf
+		fi
 		echo "vfio-pci.ids=" >> /etc/kernel/cmdline.d/20_vfio.conf
 
 		for i in "${w_device[@]}"; do
-			echo "Debug 154c: $i"
-			echo $(sed "s_\bvfio-pci.*\b_&,$(lspci -Dn | grep "$i" | awk {'print $3'}) _" /etc/kernel/cmdline.d/20_vfio.conf) > /etc/kernel/cmdline.d/20_vfio.conf
+			echo $(sed "s_^vfio-pci.ids=.*_&$(lspci -Dn | grep "$i" | awk {'print $3'}), _" /etc/kernel/cmdline.d/20_vfio.conf) > /etc/kernel/cmdline.d/20_vfio.conf
 		done
+
+		# Remove trailing punctation (,)
+		#echo $(sed 's/,$//' /etc/kernel/cmdline.d/20_vfio.conf) > /etc/kernel/cmdline.d/20_vfio.conf
+		echo $(sed '/^vfio-pci.ids=.*/ s/,$//' /etc/kernel/cmdline.d/20_vfio.conf) > /etc/kernel/cmdline.d/20_vfio.conf
 
 		# for i in `lspci -Dn | grep "$(echo $device | awk '{print $1}' | sed 's/.$//')0" | awk {'print $3'}`; do
 		# 	#echo $(sed '/s/vfio-pci.ids=/') > /etc/kernel/cmdline.d/20_vfio.conf
