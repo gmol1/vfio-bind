@@ -6,7 +6,7 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2016 Guillermo Molina
-# Copyright (c) 2018 Kim Forsman
+# Copyright (c) 2018-2019 Kim Forsman
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -54,6 +54,7 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 					do
 						case $opt in
 							"Yes")
+								touch /etc/kernel/cmdline.d/20_vfio.conf
 								echo "intel_iommu=on" >> /etc/kernel/cmdline.d/20_vfio.conf
 								clr-boot-manager update
 								echo "Done"
@@ -84,6 +85,7 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 				do
 					case $opt in
 						"Yes")
+							touch /etc/kernel/cmdline.d/20_vfio.conf
 							echo "iommu=pt" >> /etc/kernel/cmdline.d/20_vfio.conf
 							#clr-boot-manager update
 							echo "Done"
@@ -158,7 +160,7 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 
 		touch /etc/kernel/cmdline.d/20_vfio.conf
 		echo "vfio-pci.ids=" >> /etc/kernel/cmdline.d/20_vfio.conf
-		
+
 		echo "options vfio-pci ids=" > /etc/modprobe.d/vfio.conf
 
 		for i in "${w_device[@]}"; do
@@ -175,6 +177,7 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 		fi
 
 		if [[ ! $(cat /etc/dracut.conf | grep -o 'vfio-bind') ]]; then
+			touch /etc/dracut.conf
 			echo "add_dracutmodules+=\"vfio-bind\"" >> /etc/dracut.conf
 		fi
 		echo "force_drivers+=\" vfio vfio_iommu_type1 vfio-pci vfio_virqfd \"" > /etc/dracut.conf.d/vfio.conf
