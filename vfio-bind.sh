@@ -38,8 +38,9 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 
 	echo "Select the target device:"
 	PS3="Device: "
-	select opt in "${device_id[@]}"; do
-		if [[ ! -d "/sys/bus/pci/devices/$(echo $opt | awk '{print $1}')/iommu/" ]]; then
+	select device in "${device_id[@]}"; do
+		echo "Debug 41: $device"
+		if [[ ! -d "/sys/bus/pci/devices/$(echo $device | awk '{print $1}')/iommu/" ]]; then
 			if [[ $(lscpu | grep "Vendor ID:" | awk '{print $3}') == "AuthenticAMD" ]]; then
 				if [[ $(dmesg| grep -o 'AMD-Vi: Found IOMMU') ]]; then
 					echo -e "\e[31mIOMMU is enabled but isn't working correctly, check your hardware"
@@ -52,6 +53,7 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 					options=("Yes" "No")
 					select opt in "${options[@]}"
 					do
+						echo "Debug 54: $opt"
 						case $opt in
 							"Yes")
 								echo "intel_iommu=on" >> /etc/kernel/cmdline.d/20_vfio.conf
@@ -80,9 +82,10 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 				echo "Is recommended to add the \"iommu=pt\" as a kernel parameter, would you like to add it now?"
 				PS3="Option: "
 				options=("Yes" "No")
-				select opt2 in "${options[@]}"
+				select opt in "${options[@]}"
 				do
-					case $opt2 in
+					echo "Debug 86: $opt"
+					case $opt in
 						"Yes")
 							echo "iommu=pt" >> /etc/kernel/cmdline.d/20_vfio.conf
 							#clr-boot-manager update
@@ -98,9 +101,10 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 			fi
 		fi
 
-		for i in $(ls /sys/bus/pci/devices/$(echo $opt | awk '{print $1}')/iommu_group/devices/); do
-			if [[ "$i" == "$(echo $opt | awk '{print $1}')" || "$i" == "$(echo $opt | awk '{print $1}' | sed 's/0$/1/')" ]]; then
-				device+=( "$i" )
+		for i in $(ls /sys/bus/pci/devices/$(echo $device | awk '{print $1}')/iommu_group/devices/); do
+			echo "Debug 104: $device"
+			if [[ "$i" == "$(echo $device | awk '{print $1}')" || "$i" == "$(echo $device | awk '{print $1}' | sed 's/0$/1/')" ]]; then
+				w_device+=( "$i" )
 			else
 				uw_device+=( "$i" )
 			fi
@@ -117,6 +121,7 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 				options=("Yes" "No")
 				select opt in "${options[@]}"
 				do
+					echo "Debug 123: $opt"
 					case $opt in
 						"Yes")
 							break
@@ -146,13 +151,15 @@ if [[ $(lspci -D | grep VGA | awk '{print $1}') ]]; then
 		done
 		echo > $dir/vfio-bind.sh
 		echo "#!/bin/bash" >> $dir/vfio-bind.sh
-		for i in "${device[@]}"; do
+		for i in "${w_device[@]}"; do
 			echo "echo \"vfio-pci\" > $(ls /sys/bus/pci/devices/$i/driver_override)" >> $dir/vfio-bind.sh
 		done
 		echo "modprobe -i vfio-pci" >> $dir/vfio-bind.sh
 		# Added by Endumiuz -- start
-		device_id_0=`lspci -Dn | grep "$(echo $opt | awk '{print $1}' | sed 's/.$//')0" | awk {'print $3'}`
-		device_id_1=`lspci -Dn | grep "$(echo $opt | awk '{print $1}' | sed 's/.$//')1" | awk {'print $3'}`
+		echo "Debug 158: $device"
+		device_id_0=`lspci -Dn | grep "$(echo $device | awk '{print $1}' | sed 's/.$//')0" | awk {'print $3'}`
+		device_id_1=`lspci -Dn | grep "$(echo $device | awk '{print $1}' | sed 's/.$//')1" | awk {'print $3'}`
+		echo "Debug 161: $device_id_0, $device_id_1"
 		echo $(sed '/vfio-pci.ids=/d' /etc/kernel/cmdline.d/20_vfio.conf) > /etc/kernel/cmdline.d/20_vfio.conf
 		echo "vfio-pci.ids=$device_id_0,$device_id_1" >> /etc/kernel/cmdline.d/20_vfio.conf
 		if [[ ! -d /etc/modprobe.d ]]; then
